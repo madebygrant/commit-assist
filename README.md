@@ -45,14 +45,14 @@ An AI-powered commit message generator that uses Ollama to create meaningful Git
    **For Zsh (default on macOS):**
 
    ```bash
-   echo 'alias ollama-commit="(cd ~/scripts/ollama-commit && node ollama-commit.js)"' >> ~/.zshrc
+   echo 'alias ollama-commit="node ~/scripts/ollama-commit/ollama-commit.js"' >> ~/.zshrc
    source ~/.zshrc
    ```
 
    **For Bash:**
 
    ```bash
-   echo 'alias ollama-commit="(cd ~/scripts/ollama-commit && node ollama-commit.js)"' >> ~/.bashrc
+   echo 'alias ollama-commit="node ~/scripts/ollama-commit/ollama-commit.js"' >> ~/.bashrc
    source ~/.bashrc
    ```
 
