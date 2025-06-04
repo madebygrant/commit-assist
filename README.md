@@ -40,7 +40,7 @@ An AI-powered commit message generator that uses Ollama to create meaningful Git
    PROMPT_TEMPLATE=custom_template_here
    ```
 
-4. Create a shell alias for easy access from anywhere:
+4. (Optional) Create a shell alias for easy access from anywhere:
 
    **For Zsh (default on macOS):**
 
