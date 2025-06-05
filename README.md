@@ -85,15 +85,16 @@ commit-assist
 
 ### Command Line Options
 
-| Option                  | Short  | Description                               | Example                               |
-| ----------------------- | ------ | ----------------------------------------- | ------------------------------------- |
-| `--help`                | `-h`   | Show help message                         | `commit-assist -h`                    |
-| `--context <text>`      | `-ctx` | Add context for better message generation | `commit-assist -ctx "fix login bug"`  |
-| `--conventional-format` | `-cf`  | Use conventional commit format            | `commit-assist -cf`                   |
-| `--type <type>`         | `-t`   | Custom conventional commit type           | `commit-assist -t "fix"`              |
-| `--ticketid <ticket>`   | `-tid` | Append ticket ID to message               | `commit-assist -tid "PROJ-123"`       |
-| `--copy`                | `-c`   | Auto-copy to clipboard (no prompt)        | `commit-assist -c`                    |
-| `--model <model>`       | `-m`   | Specify Ollama model to use               | `commit-assist -m "codellama:latest"` |
+| Option                         | Short  | Description                               | Example                                         |
+| ------------------------------ | ------ | ----------------------------------------- | ----------------------------------------------- |
+| `--help`                       | `-h`   | Show help message                         | `commit-assist -h`                              |
+| `--context <text>`             | `-ctx` | Add context for better message generation | `commit-assist -ctx "fix login bug"`            |
+| `--conventional-format`        | `-cf`  | Use conventional commit format            | `commit-assist -cf`                             |
+| `--type <type>`                | `-t`   | Custom conventional commit type           | `commit-assist -t "fix"`                        |
+| `--ticketid <ticket>`          | `-tid` | Append ticket ID to message               | `commit-assist -tid "PROJ-123"`                 |
+| `--copy`                       | `-c`   | Auto-copy to clipboard (no prompt)        | `commit-assist -c`                              |
+| `--model <model>`              | `-m`   | Specify Ollama model to use               | `commit-assist -m "codellama:latest"`           |
+| `--prompt-template <template>` | `-pt`  | Use custom prompt template                | `commit-assist -pt "Brief commit: {gitStatus}"` |
 
 ### Examples
 
@@ -121,11 +122,18 @@ commit-assist -c -tid "PROJ-123"
 commit-assist -m "codellama:latest" -t "fix" -ctx "database connection"
 ```
 
-**Full example with all options:**
+**Custom prompt template:**
 
 ```bash
-commit-assist -m "llama3.2:latest" -cf -t "feat" -tid "PROJ-456" -ctx "add user authentication" -c
+commit-assist -pt "Create a brief commit message for:\nChanges: {gitStatus}\nDiff: {gitDiff}\nContext: {userContext}
 ```
+
+**Full example with all options:**
+
+````bash
+commit-assist -m "llama3.2:latest" -cf -t "feat" -tid "PROJ-456" -ctx "add user authentication" -pt "Generate a detailed commit message:\nChanges: {gitStatus}\nDiff: {gitDiff}\nContext: {userContext}" -c
+```iff}\nContext: {userContext}" -ctx "performance optimization"
+````
 
 ## Workflow
 
@@ -146,11 +154,21 @@ The script determines which model to use in this order:
 
 ### Prompt Template Variables
 
-If using a custom `PROMPT_TEMPLATE`, these variables are available:
+You can customize how the AI generates commit messages using the `--prompt-template` or `-pt` flag. Custom templates must include these required variables:
 
 - `{gitStatus}` - Git status of staged files
 - `{gitDiff}` - Git diff of staged changes
 - `{userContext}` - Additional context provided by user
+
+**Example custom template:**
+
+```bash
+commit-assist -pt "Write a commit message for these changes: {gitStatus}. Additional context: {userContext}. Diff details: {gitDiff}"
+```
+
+**Template Validation:**
+
+The script validates that your custom template includes all required placeholders. If any are missing, it will show an error and exit.
 
 ## Conventional Commits
 
