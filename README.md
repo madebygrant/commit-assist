@@ -125,15 +125,14 @@ commit-assist -m "codellama:latest" -t "fix" -ctx "database connection"
 **Custom prompt template:**
 
 ```bash
-commit-assist -pt "Create a brief commit message for:\nChanges: {gitStatus}\nDiff: {gitDiff}\nContext: {userContext}
+commit-assist -pt "Create a brief commit message for:\n\nChanges: {gitStatus}\nDiff: {gitDiff}\nContext: {userContext}
 ```
 
 **Full example with all options:**
 
-````bash
+```bash
 commit-assist -m "llama3.2:latest" -cf -t "feat" -tid "PROJ-456" -ctx "add user authentication" -pt "Generate a detailed commit message:\nChanges: {gitStatus}\nDiff: {gitDiff}\nContext: {userContext}" -c
-```iff}\nContext: {userContext}" -ctx "performance optimization"
-````
+```
 
 ## Workflow
 
