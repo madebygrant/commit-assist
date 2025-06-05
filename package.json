@@ -1,9 +1,12 @@
 {
-  "name": "ollama-commit",
+  "name": "commit-assist",
   "version": "0.2.0",
-  "main": "ollama-commit.js",
+  "main": "commit-assist.js",
+  "bin": {
+    "commit-assist": "./commit-assist.js"
+  },
   "scripts": {
-    "ollama-commit": "node ollama-commit.js"
+    "commit-assist": "node commit-assist.js"
   },
   "author": "",
   "license": "ISC",

@@ -1,4 +1,4 @@
-# Ollama Commit
+# Commit Assist
 
 An AI-powered commit message generator that uses Ollama to create meaningful Git commit messages based on your staged changes.
 
@@ -20,11 +20,9 @@ An AI-powered commit message generator that uses Ollama to create meaningful Git
 
 ## Installation
 
-1. Navigate to the directory of the script
+### Method 1: Global NPM Installation (Recommended)
 
-   ```bash
-   Example: ~/scripts/ollama-commit
-   ```
+1. Navigate to the commit-assist script directory (e.g., `cd ~/scripts/commit-assist`).
 
 2. Install dependencies:
 
@@ -32,34 +30,44 @@ An AI-powered commit message generator that uses Ollama to create meaningful Git
    npm install
    ```
 
-3. (Optional) Create a `.env` file for default configuration:
+3. Install globally:
 
+   ```bash
+   npm install -g .
+   ```
+
+4. (Optional) Create a `.env` file for default configuration:
    ```bash
    # .env
    OLLAMA_MODEL=llama3.2:latest
    PROMPT_TEMPLATE=custom_template_here
    ```
 
-4. (Optional) Create a shell alias for easy access from anywhere:
+After global installation, you can use `commit-assist` from any directory in your terminal.\*
+
+### Method 2: Shell Alias (Alternative)
+
+1. Navigate to the commit-assist script directory (e.g., `cd ~/scripts/commit-assist`). and install dependencies:
+
+   ```bash
+   cd  ~/scripts/commit-assist
+   npm install
+   ```
+
+2. Create a shell alias:
 
    **For Zsh (default on macOS):**
 
    ```bash
-   echo 'alias ollama-commit="node ~/scripts/ollama-commit/ollama-commit.js"' >> ~/.zshrc
+   echo 'alias commit-assist="node ~/scripts/commit-assist/commit-assist.js"' >> ~/.zshrc
    source ~/.zshrc
    ```
 
    **For Bash:**
 
    ```bash
-   echo 'alias ollama-commit="node ~/scripts/ollama-commit/ollama-commit.js"' >> ~/.bashrc
+   echo 'alias commit-assist="node ~/scripts/commit-assist/commit-assist.js"' >> ~/.bashrc
    source ~/.bashrc
-   ```
-
-   After adding the alias, you can run the script from any directory:
-
-   ```bash
-   ollama-commit -c -cf -tid "PROJ-123"
    ```
 
 ## Usage
@@ -69,53 +77,51 @@ An AI-powered commit message generator that uses Ollama to create meaningful Git
 Generate a commit message for your staged changes:
 
 ```bash
-node ~/scripts/ollama-commit/ollama-commit.js
-# OR if you've set up the alias:
-ollama-commit
+commit-assist
 ```
 
 ### Command Line Options
 
 | Option                  | Short  | Description                               | Example                               |
 | ----------------------- | ------ | ----------------------------------------- | ------------------------------------- |
-| `--help`                | `-h`   | Show help message                         | `ollama-commit -h`                    |
-| `--context <text>`      | `-ctx` | Add context for better message generation | `ollama-commit -ctx "fix login bug"`  |
-| `--conventional-format` | `-cf`  | Use conventional commit format            | `ollama-commit -cf`                   |
-| `--type <type>`         | `-t`   | Custom conventional commit type           | `ollama-commit -t "fix"`              |
-| `--ticketid <ticket>`   | `-tid` | Append ticket ID to message               | `ollama-commit -tid "PROJ-123"`       |
-| `--copy`                | `-c`   | Auto-copy to clipboard (no prompt)        | `ollama-commit -c`                    |
-| `--model <model>`       | `-m`   | Specify Ollama model to use               | `ollama-commit -m "codellama:latest"` |
+| `--help`                | `-h`   | Show help message                         | `commit-assist -h`                    |
+| `--context <text>`      | `-ctx` | Add context for better message generation | `commit-assist -ctx "fix login bug"`  |
+| `--conventional-format` | `-cf`  | Use conventional commit format            | `commit-assist -cf`                   |
+| `--type <type>`         | `-t`   | Custom conventional commit type           | `commit-assist -t "fix"`              |
+| `--ticketid <ticket>`   | `-tid` | Append ticket ID to message               | `commit-assist -tid "PROJ-123"`       |
+| `--copy`                | `-c`   | Auto-copy to clipboard (no prompt)        | `commit-assist -c`                    |
+| `--model <model>`       | `-m`   | Specify Ollama model to use               | `commit-assist -m "codellama:latest"` |
 
 ### Examples
 
 **Basic commit message generation:**
 
 ```bash
-ollama-commit
+commit-assist
 ```
 
 **With context and conventional format:**
 
 ```bash
-ollama-commit -cf -ctx "authentication issue"
+commit-assist -cf -ctx "authentication issue"
 ```
 
 **Auto-copy with ticket ID:**
 
 ```bash
-ollama-commit -c -tid "PROJ-123"
+commit-assist -c -tid "PROJ-123"
 ```
 
 **Custom model with specific type:**
 
 ```bash
-ollama-commit -m "codellama:latest" -t "fix" -ctx "database connection"
+commit-assist -m "codellama:latest" -t "fix" -ctx "database connection"
 ```
 
 **Full example with all options:**
 
 ```bash
-ollama-commit -m "llama3.2:latest" -cf -t "feat" -tid "PROJ-456" -ctx "add user authentication" -c
+commit-assist -m "llama3.2:latest" -cf -t "feat" -tid "PROJ-456" -ctx "add user authentication" -c
 ```
 
 ## Workflow
