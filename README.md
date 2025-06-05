@@ -22,15 +22,19 @@ An AI-powered commit message generator that uses Ollama to create meaningful Git
 
 ### Method 1: Global NPM Installation (Recommended)
 
-1. Navigate to the commit-assist script directory (e.g., `cd ~/scripts/commit-assist`).
-
-2. Install dependencies:
+1. Clone the repository:
 
    ```bash
-   npm install
+   git clone https://github.com/madebygrant/commit-assist.git ~/scripts/commit-assist
    ```
 
-3. Install globally:
+2. Navigate to the script directory:
+
+   ```bash
+   cd ~/scripts/commit-assist
+   ```
+
+3. Install globally (this will also install dependencies):
 
    ```bash
    npm install -g .
@@ -43,18 +47,24 @@ An AI-powered commit message generator that uses Ollama to create meaningful Git
    PROMPT_TEMPLATE=custom_template_here
    ```
 
-After global installation, you can use `commit-assist` from any directory in your terminal.\*
+After global installation, you can use `commit-assist` from any directory in your terminal.
 
 ### Method 2: Shell Alias (Alternative)
 
-1. Navigate to the commit-assist script directory (e.g., `cd ~/scripts/commit-assist`). and install dependencies:
+1. Clone the repository:
 
    ```bash
-   cd  ~/scripts/commit-assist
+   git clone https://github.com/madebygrant/commit-assist.git ~/scripts/commit-assist
+   ```
+
+2. Navigate to the script directory and install dependencies:
+
+   ```bash
+   cd ~/scripts/commit-assist
    npm install
    ```
 
-2. Create a shell alias:
+3. Create a shell alias:
 
    **For Zsh (default on macOS):**
 
