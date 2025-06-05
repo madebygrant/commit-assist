@@ -94,7 +94,7 @@ commit-assist
 | `--ticketid <ticket>`          | `-tid` | Append ticket ID to message               | `commit-assist -tid "PROJ-123"`                 |
 | `--copy`                       | `-c`   | Auto-copy to clipboard (no prompt)        | `commit-assist -c`                              |
 | `--model <model>`              | `-m`   | Specify Ollama model to use               | `commit-assist -m "codellama:latest"`           |
-| `--prompt-template <template>` | `-pt`  | Use custom prompt template                | `commit-assist -pt "Brief commit: {gitStatus}"` |
+| `--prompt-template <template>` | `-pt`  | Use custom prompt template                | `commit-assist -pt "Create a brief commit message for:\n\nChanges: {gitStatus}\nDiff: {gitDiff}\nContext: {userContext}"` |
 
 ### Examples
 
@@ -212,7 +212,6 @@ When using conventional commit format (`-cf` flag), the AI will generate message
 The script requires these npm packages:
 
 - `ollama` - Ollama API client
-- `dotenv` - Environment variable loading
 - `child_process` - Git command execution
 - `readline` - User input handling
 
