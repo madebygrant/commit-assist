@@ -40,13 +40,6 @@ An AI-powered commit message generator that uses Ollama to create meaningful Git
    npm install -g .
    ```
 
-4. (Optional) Create a `.env` file for default configuration:
-   ```bash
-   # .env
-   OLLAMA_MODEL=llama3.2:latest
-   PROMPT_TEMPLATE=custom_template_here
-   ```
-
 After global installation, you can use `commit-assist` from any directory in your terminal.
 
 ### Method 2: Shell Alias (Alternative)
@@ -144,25 +137,12 @@ commit-assist -m "llama3.2:latest" -cf -t "feat" -tid "PROJ-456" -ctx "add user 
 
 ## Configuration
 
-### Environment Variables
-
-Create a `.env` file in the script directory:
-
-```env
-# Default Ollama model (fallback if --model not specified)
-OLLAMA_MODEL=llama3.2:latest
-
-# Custom prompt template (optional)
-PROMPT_TEMPLATE=Your custom prompt template here
-```
-
 ### Model Priority
 
 The script determines which model to use in this order:
 
 1. `--model` or `-m` flag
-2. `OLLAMA_MODEL` environment variable
-3. Default: `llama3.2:latest`
+2. Default: `llama3.2:latest`
 
 ### Prompt Template Variables
 

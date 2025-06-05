@@ -1,6 +1,5 @@
 #!/usr/bin/env node
-
-require("dotenv").config(); // Load environment variables from .env file
+// npm install child_process ollama readline
 
 const { exec } = require("child_process");
 const { promisify } = require("util");
@@ -9,8 +8,7 @@ const readline = require("readline");
 
 const execAsync = promisify(exec);
 
-// Configuration (Adjust these!)
-const ollamaModel = process.env.OLLAMA_MODEL || "llama3.2:latest";
+// Configuration
 const ollama = new Ollama();
 
 // Helper function to parse CLI arguments
@@ -38,6 +36,9 @@ function parseArgs() {
     } else if (args[i] === "--model" || args[i] === "-m") {
       result.model = args[i + 1] || "";
       i++; // Skip the next argument as it's the value
+    } else if (args[i] === "--prompt-template" || args[i] === "-pt") {
+      result.promptTemplate = args[i + 1] || "";
+      i++; // Skip the next argument as it's the value
     }
   }
 
@@ -59,6 +60,7 @@ Options:
   -tid, --ticketid <ticket>           Ticket id/number to append
   -c, --copy                          Automatically copy to clipboard (no prompt)
   -m, --model <model>                 Specify Ollama model to use
+  -pt, --prompt-template <template>   Custom prompt template
 
 Examples:
   commit-assist
@@ -66,7 +68,30 @@ Examples:
   commit-assist -cf -tid "PROJ-123"
   commit-assist -t "fix" -ctx "authentication issue"
   commit-assist -m "codellama:latest" -c
+  commit-assist -pt "Create a commit message for: {gitStatus}"
 `);
+}
+
+// Helper function to validate prompt template
+function validatePromptTemplate(template) {
+  const requiredPlaceholders = ["{gitStatus}", "{gitDiff}", "{userContext}"];
+  const missingPlaceholders = requiredPlaceholders.filter(
+    (placeholder) => !template.includes(placeholder)
+  );
+
+  if (missingPlaceholders.length > 0) {
+    console.error(
+      `❌ Invalid prompt template. Missing required placeholders: ${missingPlaceholders.join(
+        ", "
+      )}`
+    );
+    console.error(
+      "Required placeholders: {gitStatus}, {gitDiff}, {userContext}"
+    );
+    process.exit(1);
+  }
+
+  return true;
 }
 
 // Helper function to create dynamic prompt template
@@ -176,9 +201,14 @@ async function generateCommitMessage(
   try {
     const args = parseArgs();
 
-    // Create prompt template based on conventional commits setting
-    const promptTemplate =
-      process.env.PROMPT_TEMPLATE || createPromptTemplate(useConventional);
+    // Determine prompt template with priority: CLI flag > default template
+    let promptTemplate;
+    if (args.promptTemplate) {
+      validatePromptTemplate(args.promptTemplate);
+      promptTemplate = args.promptTemplate;
+    } else {
+      promptTemplate = createPromptTemplate(useConventional);
+    }
 
     // Construct the prompt
     const prompt = promptTemplate
@@ -188,7 +218,7 @@ async function generateCommitMessage(
 
     // Use Ollama library with streaming
     const response = await ollama.generate({
-      model: args.model ?? ollamaModel,
+      model: args.model || "llama3.2:latest",
       prompt: prompt,
       stream: true,
     });
