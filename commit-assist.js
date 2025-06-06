@@ -99,12 +99,16 @@ function validatePromptTemplate(template) {
 }
 
 // Helper function to create dynamic prompt template
-function createPromptTemplate(useConventional) {
+function createPromptTemplate(useConventional, userContext) {
   const conventionalText = useConventional
     ? "Use the conventional commit format (e.g., feat:, fix:, docs:)."
     : "Do not include conventional commit types (e.g., feat:, fix:, docs:) in the commit message.";
 
-  return `Write a commit message based on the following information: {gitDiff} changes were made, {gitStagedChanges} files are staged, and the {userContext} is the purpose or goal of the commit. Keep the message concise and focused on the main change or feature being added.${conventionalText}\nJust the commit message, no additional text and formatting.`;
+  userContextText = userContext
+    ? ` The additional context is: "${userContext}".`
+    : " No additional user context provided.";
+
+  return `Summarise and write a brief, single line commit message based on the following information: {gitDiff} changes were made and {gitStagedChanges} files are staged.${userContextText} Keep the message concise and focused on the main change or feature being added.${conventionalText}\n\n Just output the single line commit message. No additional text, lists, markdown syntax, and formatting.`;
 }
 
 // Helper function to apply custom conventional type
@@ -213,7 +217,7 @@ async function generateCommitMessage(
       validatePromptTemplate(args.promptTemplate);
       promptTemplate = args.promptTemplate;
     } else {
-      promptTemplate = createPromptTemplate(useConventional);
+      promptTemplate = createPromptTemplate(useConventional, userContext);
     }
 
     // Construct the prompt
