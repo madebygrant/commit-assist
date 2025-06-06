@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// npm install child_process ollama readline
+// npm install child_process ollama readline clipboardy
 
 const { exec } = require("child_process");
 const { promisify } = require("util");
@@ -172,12 +172,14 @@ async function getGitData() {
   }
 }
 
-// Helper function to copy text to clipboard using pbcopy
+// Helper function to copy text to clipboard (cross-platform)
 async function copyToClipboard(text) {
   try {
-    await execAsync(`echo ${JSON.stringify(text)} | pbcopy`);
+    const clipboardy = await import("clipboardy");
+    await clipboardy.default.write(text);
     return true;
   } catch (error) {
+    console.error("❌ Clipboard copy failed:", error.message);
     return false;
   }
 }

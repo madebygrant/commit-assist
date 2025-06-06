@@ -16,7 +16,7 @@ An AI-powered commit message generator that uses Ollama to create meaningful Git
 - [Node.js](https://nodejs.org/) (v14 or higher)
 - [Ollama](https://ollama.ai/) installed and running
 - Git repository with staged changes
-- macOS (for clipboard functionality via `pbcopy`)
+- macOS, Windows or Linux
 
 ## Installation
 
@@ -204,8 +204,8 @@ When using conventional commit format (`-cf` flag), the AI will generate message
 
 **"Clipboard copy failed"**
 
-- Only works on macOS with `pbcopy`
-- Check if `pbcopy` command is available
+- Cross-platform clipboard support provided by `clipboardy`
+- If clipboard access fails, the message will still be displayed for manual copying
 
 ### Dependencies
 
@@ -214,6 +214,7 @@ The script requires these npm packages:
 - `ollama` - Ollama API client
 - `child_process` - Git command execution
 - `readline` - User input handling
+- `clipboardy` - Cross-platform clipboard support
 
 ## Roadmap
 
