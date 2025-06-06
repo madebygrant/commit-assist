@@ -68,13 +68,17 @@ Examples:
   commit-assist -cf -tid "PROJ-123"
   commit-assist -t "fix" -ctx "authentication issue"
   commit-assist -m "codellama:latest" -c
-  commit-assist -pt "Create a commit message for: {gitStatus}"
+  commit-assist -pt "Create a commit message for: {gitStagedChanges}"
 `);
 }
 
 // Helper function to validate prompt template
 function validatePromptTemplate(template) {
-  const requiredPlaceholders = ["{gitStatus}", "{gitDiff}", "{userContext}"];
+  const requiredPlaceholders = [
+    "{gitStagedChanges}",
+    "{gitDiff}",
+    "{userContext}",
+  ];
   const missingPlaceholders = requiredPlaceholders.filter(
     (placeholder) => !template.includes(placeholder)
   );
@@ -86,7 +90,7 @@ function validatePromptTemplate(template) {
       )}`
     );
     console.error(
-      "Required placeholders: {gitStatus}, {gitDiff}, {userContext}"
+      "Required placeholders: {gitStagedChanges}, {gitDiff}, {userContext}"
     );
     process.exit(1);
   }
@@ -100,7 +104,7 @@ function createPromptTemplate(useConventional) {
     ? "Use the conventional commit format (e.g., feat:, fix:, docs:)."
     : "Do not include conventional commit types (e.g., feat:, fix:, docs:) in the commit message.";
 
-  return `Summarize the staged code changes below into a clear, concise professional Git commit message. Do not preface the commit with anything, use the present tense, return the full sentence. ${conventionalText}\n\nStaged Changes:\n{gitStatus}\n\nDiff:\n{gitDiff}\n\nContext: {userContext}\n\nJust the commit message, no additional text and formatting.`;
+  return `Write a commit message based on the following information: {gitDiff} changes were made, {gitStagedChanges} files are staged, and the {userContext} is the purpose or goal of the commit. Keep the message concise and focused on the main change or feature being added.${conventionalText}`;
 }
 
 // Helper function to apply custom conventional type
@@ -147,11 +151,11 @@ async function getGitData() {
       execAsync("git diff --cached"),
     ]);
 
-    const gitStatus = statusResult.stdout.trim();
+    const gitStagedChanges = statusResult.stdout.trim();
     const gitDiff = diffResult.stdout.trim();
 
     // Early exit if no staged changes
-    if (!gitStatus) {
+    if (!gitStagedChanges) {
       console.log(
         "❌ No staged changes found. Please stage some changes first with 'git add'."
       );
@@ -159,7 +163,7 @@ async function getGitData() {
     }
 
     return {
-      gitStatus: gitStatus || "No staged changes found",
+      gitStagedChanges: gitStagedChanges || "No staged changes found",
       gitDiff: gitDiff || "No diff available",
     };
   } catch (error) {
@@ -212,7 +216,7 @@ async function generateCommitMessage(
 
     // Construct the prompt
     const prompt = promptTemplate
-      .replace("{gitStatus}", gitData.gitStatus)
+      .replace("{gitStagedChanges}", gitData.gitStagedChanges)
       .replace("{gitDiff}", gitData.gitDiff)
       .replace("{userContext}", userContext);
 

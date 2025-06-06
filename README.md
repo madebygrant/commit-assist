@@ -85,16 +85,16 @@ commit-assist
 
 ### Command Line Options
 
-| Option                         | Short  | Description                               | Example                                         |
-| ------------------------------ | ------ | ----------------------------------------- | ----------------------------------------------- |
-| `--help`                       | `-h`   | Show help message                         | `commit-assist -h`                              |
-| `--context <text>`             | `-ctx` | Add context for better message generation | `commit-assist -ctx "fix login bug"`            |
-| `--conventional-format`        | `-cf`  | Use conventional commit format            | `commit-assist -cf`                             |
-| `--type <type>`                | `-t`   | Custom conventional commit type           | `commit-assist -t "fix"`                        |
-| `--ticketid <ticket>`          | `-tid` | Append ticket ID to message               | `commit-assist -tid "PROJ-123"`                 |
-| `--copy`                       | `-c`   | Auto-copy to clipboard (no prompt)        | `commit-assist -c`                              |
-| `--model <model>`              | `-m`   | Specify Ollama model to use               | `commit-assist -m "codellama:latest"`           |
-| `--prompt-template <template>` | `-pt`  | Use custom prompt template                | `commit-assist -pt "Create a brief commit message for:\n\nChanges: {gitStatus}\nDiff: {gitDiff}\nContext: {userContext}"` |
+| Option                         | Short  | Description                               | Example                                                                                                                                        |
+| ------------------------------ | ------ | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--help`                       | `-h`   | Show help message                         | `commit-assist -h`                                                                                                                             |
+| `--context <text>`             | `-ctx` | Add context for better message generation | `commit-assist -ctx "fix login bug"`                                                                                                           |
+| `--conventional-format`        | `-cf`  | Use conventional commit format            | `commit-assist -cf`                                                                                                                            |
+| `--type <type>`                | `-t`   | Custom conventional commit type           | `commit-assist -t "fix"`                                                                                                                       |
+| `--ticketid <ticket>`          | `-tid` | Append ticket ID to message               | `commit-assist -tid "PROJ-123"`                                                                                                                |
+| `--copy`                       | `-c`   | Auto-copy to clipboard (no prompt)        | `commit-assist -c`                                                                                                                             |
+| `--model <model>`              | `-m`   | Specify Ollama model to use               | `commit-assist -m "codellama:latest"`                                                                                                          |
+| `--prompt-template <template>` | `-pt`  | Use custom prompt template                | `commit-assist -pt "Write a commit message for these changes: {gitStagedChanges}. Additional context: {userContext}. Diff details: {gitDiff}"` |
 
 ### Examples
 
@@ -125,13 +125,13 @@ commit-assist -m "codellama:latest" -t "fix" -ctx "database connection"
 **Custom prompt template:**
 
 ```bash
-commit-assist -pt "Create a brief commit message for:\n\nChanges: {gitStatus}\nDiff: {gitDiff}\nContext: {userContext}
+commit-assist -pt "Create a brief commit message for:\n\nChanges: {gitStagedChanges}\nDiff: {gitDiff}\nContext: {userContext}
 ```
 
 **Full example with all options:**
 
 ```bash
-commit-assist -m "llama3.2:latest" -cf -t "feat" -tid "PROJ-456" -ctx "add user authentication" -pt "Generate a detailed commit message:\nChanges: {gitStatus}\nDiff: {gitDiff}\nContext: {userContext}" -c
+commit-assist -m "llama3.2:latest" -cf -t "feat" -tid "PROJ-456" -ctx "add user authentication" -pt "Generate a detailed commit message:\nChanges: {gitStagedChanges}\nDiff: {gitDiff}\nContext: {userContext}" -c
 ```
 
 ## Workflow
@@ -155,14 +155,14 @@ The script determines which model to use in this order:
 
 You can customize how the AI generates commit messages using the `--prompt-template` or `-pt` flag. Custom templates must include these required variables:
 
-- `{gitStatus}` - Git status of staged files
+- `{gitStagedChanges}` - Git status of staged files
 - `{gitDiff}` - Git diff of staged changes
 - `{userContext}` - Additional context provided by user
 
 **Example custom template:**
 
 ```bash
-commit-assist -pt "Write a commit message for these changes: {gitStatus}. Additional context: {userContext}. Diff details: {gitDiff}"
+commit-assist -pt "Write a commit message for these changes: {gitStagedChanges}. Additional context: {userContext}. Diff details: {gitDiff}"
 ```
 
 **Template Validation:**
@@ -214,6 +214,10 @@ The script requires these npm packages:
 - `ollama` - Ollama API client
 - `child_process` - Git command execution
 - `readline` - User input handling
+
+## Roadmap
+
+- [ ] Support for config files, global and project based
 
 ## License
 
