@@ -104,7 +104,7 @@ function createPromptTemplate(useConventional) {
     ? "Use the conventional commit format (e.g., feat:, fix:, docs:)."
     : "Do not include conventional commit types (e.g., feat:, fix:, docs:) in the commit message.";
 
-  return `Write a commit message based on the following information: {gitDiff} changes were made, {gitStagedChanges} files are staged, and the {userContext} is the purpose or goal of the commit. Keep the message concise and focused on the main change or feature being added.${conventionalText}`;
+  return `Write a commit message based on the following information: {gitDiff} changes were made, {gitStagedChanges} files are staged, and the {userContext} is the purpose or goal of the commit. Keep the message concise and focused on the main change or feature being added.${conventionalText}\nJust the commit message, no additional text and formatting.`;
 }
 
 // Helper function to apply custom conventional type
