@@ -212,8 +212,6 @@ When using conventional commit format (`-cf` flag), the AI will generate message
 The script requires these npm packages:
 
 - `ollama` - Ollama API client
-- `child_process` - Git command execution
-- `readline` - User input handling
 - `clipboardy` - Cross-platform clipboard support
 
 ## Roadmap
