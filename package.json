@@ -1,6 +1,6 @@
 {
   "name": "commit-assist",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "main": "commit-assist.js",
   "bin": {
     "commit-assist": "./commit-assist.js"

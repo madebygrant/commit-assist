@@ -205,11 +205,13 @@ function getUserInput(question) {
 
 async function generateCommitMessage(
   gitData,
+  args, // Add args as a parameter
   userContext = "",
   useConventional = false
 ) {
   try {
-    const args = parseArgs();
+    // Remove redundant call to parseArgs()
+    // const args = parseArgs();
 
     // Determine prompt template with priority: CLI flag > default template
     let promptTemplate;
@@ -254,7 +256,7 @@ async function generateCommitMessage(
 // Main execution
 async function main() {
   try {
-    // Parse CLI arguments
+    // Parse CLI arguments once at the start
     const args = parseArgs();
 
     // Determine if conventional commits should be used
@@ -282,6 +284,7 @@ async function main() {
     console.log("Generating commit message...");
     const commitMessage = await generateCommitMessage(
       gitData,
+      args, // Pass args here
       userContext,
       useConventional
     );
