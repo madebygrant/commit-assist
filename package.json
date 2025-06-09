@@ -9,7 +9,7 @@
     "commit-assist": "node commit-assist.js"
   },
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "description": "",
   "dependencies": {
     "clipboardy": "^4.0.0",
