@@ -1,15 +1,41 @@
 #!/usr/bin/env node
-// npm install child_process ollama readline clipboardy
 
 const { exec } = require("child_process");
 const { promisify } = require("util");
 const { Ollama } = require("ollama");
 const readline = require("readline");
+const fs = require("fs");
 
 const execAsync = promisify(exec);
 
-// Configuration
-const ollama = new Ollama();
+// Fetch recent commit messages
+async function getRecentCommits() {
+  try {
+    const { stdout } = await execAsync("git log -n 3 --oneline");
+    return stdout.trim();
+  } catch {
+    return "";
+  }
+}
+
+// Fetch current branch name
+async function getBranchName() {
+  try {
+    const { stdout } = await execAsync("git rev-parse --abbrev-ref HEAD");
+    return stdout.trim();
+  } catch {
+    return "";
+  }
+}
+
+// Summarize the diff by listing changed files
+function summarizeDiff(gitDiff) {
+  const fileMatches = [...gitDiff.matchAll(/^diff --git a\/(.+?) b\/.+$/gm)];
+  const files = fileMatches.map((match) => match[1]);
+  return files.length
+    ? `Files changed: ${files.join(", ")}`
+    : "No files changed";
+}
 
 // Helper function to parse CLI arguments
 function parseArgs() {
@@ -60,7 +86,7 @@ Options:
   -tid, --ticketid <ticket>           Ticket id/number to append
   -c, --copy                          Automatically copy to clipboard (no prompt)
   -m, --model <model>                 Specify Ollama model to use
-  -pt, --prompt-template <template>   Custom prompt template
+  -pt, --prompt-template <path>       Path to custom prompt template markdown file
 
 Examples:
   commit-assist
@@ -68,7 +94,7 @@ Examples:
   commit-assist -cf -tid "PROJ-123"
   commit-assist -t "fix" -ctx "authentication issue"
   commit-assist -m "codellama:latest" -c
-  commit-assist -pt "Create a commit message for: {gitStagedChanges}"
+  commit-assist -pt ./my-custom-prompt.md
 `);
 }
 
@@ -78,6 +104,10 @@ function validatePromptTemplate(template) {
     "{gitStagedChanges}",
     "{gitDiff}",
     "{userContext}",
+    "{recentCommits}",
+    "{branchName}",
+    "{gitDiffSummary}",
+    "{conventionalText}",
   ];
   const missingPlaceholders = requiredPlaceholders.filter(
     (placeholder) => !template.includes(placeholder)
@@ -90,25 +120,12 @@ function validatePromptTemplate(template) {
       )}`
     );
     console.error(
-      "Required placeholders: {gitStagedChanges}, {gitDiff}, {userContext}"
+      "Required placeholders: {gitStagedChanges}, {gitDiff}, {userContext}, {recentCommits}, {branchName}, {gitDiffSummary}, {conventionalText}"
     );
     process.exit(1);
   }
 
   return true;
-}
-
-// Helper function to create dynamic prompt template
-function createPromptTemplate(useConventional, userContext) {
-  const conventionalText = useConventional
-    ? "Use the conventional commit format (e.g., feat:, fix:, docs:)."
-    : "Do not include conventional commit types (e.g., feat:, fix:, docs:) in the commit message.";
-
-  userContextText = userContext
-    ? ` The additional context is: "${userContext}".`
-    : " No additional user context provided.";
-
-  return `Summarise and write a brief, single line commit message based on the following information: {gitDiff} changes were made and {gitStagedChanges} files are staged.${userContextText} Keep the message concise and focused on the main change or feature being added.${conventionalText}\n\n Just output the single line commit message. No additional text, lists, markdown syntax, and formatting.`;
 }
 
 // Helper function to apply custom conventional type
@@ -150,9 +167,10 @@ function formatCommitMessage(message, ticketID) {
 // Helper function to get both git status and diff in parallel
 async function getGitData() {
   try {
+    const maxBuffer = 10 * 1024 * 1024; // 10 MB
     const [statusResult, diffResult] = await Promise.all([
-      execAsync("git diff --cached --name-status"),
-      execAsync("git diff --cached"),
+      execAsync("git diff --cached --name-status", { maxBuffer }),
+      execAsync("git diff --cached", { maxBuffer }),
     ]);
 
     const gitStagedChanges = statusResult.stdout.trim();
@@ -203,32 +221,78 @@ function getUserInput(question) {
   });
 }
 
+// Helper function to fill template placeholders with values from an object
+function fillTemplate(template, values) {
+  return template.replace(/\{(\w+)\}/g, (match, key) => {
+    return key in values ? values[key] : match;
+  });
+}
+
+// Helper function to load the prompt template from a custom path or default prompt.md
+function loadPromptTemplate(customPath = null) {
+  const path = require("path");
+  let templatePath;
+  if (customPath) {
+    templatePath = path.isAbsolute(customPath)
+      ? customPath
+      : path.join(process.cwd(), customPath);
+    // Validate the path exists and is a file
+    if (!fs.existsSync(templatePath) || !fs.statSync(templatePath).isFile()) {
+      console.error(
+        `❌ Prompt template path does not exist or is not a file: ${templatePath}`
+      );
+      process.exit(1);
+    }
+  } else {
+    templatePath = path.join(__dirname, "prompt.md");
+  }
+  try {
+    return fs.readFileSync(templatePath, "utf8");
+  } catch (e) {
+    console.error(
+      `❌ Could not load prompt template at ${templatePath}:`,
+      e.message
+    );
+    process.exit(1);
+  }
+}
+
 async function generateCommitMessage(
   gitData,
-  args, // Add args as a parameter
+  args,
   userContext = "",
-  useConventional = false
+  useConventional = false,
+  promptTemplate = null // New parameter
 ) {
   try {
-    // Remove redundant call to parseArgs()
-    // const args = parseArgs();
+    // Prepare all possible values for template replacement
+    const values = {
+      gitStagedChanges: gitData.gitStagedChanges,
+      gitDiff: gitData.gitDiff,
+      userContext,
+      recentCommits: args.recentCommits || "",
+      branchName: args.branchName || "",
+      gitDiffSummary: args.gitDiffSummary || "",
+      conventionalText: useConventional
+        ? "Use the Conventional Commits format (type: scope: subject)."
+        : "Do not use Conventional Commit types (e.g., feat:, fix:, docs:).",
+    };
 
-    // Determine prompt template with priority: CLI flag > default template
-    let promptTemplate;
-    if (args.promptTemplate) {
-      validatePromptTemplate(args.promptTemplate);
-      promptTemplate = args.promptTemplate;
+    let prompt;
+    if (promptTemplate) {
+      prompt = fillTemplate(promptTemplate, values);
+    } else if (args.promptTemplate) {
+      // args.promptTemplate is now a file path
+      const customTemplate = loadPromptTemplate(args.promptTemplate);
+      validatePromptTemplate(customTemplate);
+      prompt = fillTemplate(customTemplate, values);
     } else {
-      promptTemplate = createPromptTemplate(useConventional, userContext);
+      const defaultTemplate = loadPromptTemplate();
+      prompt = fillTemplate(defaultTemplate, values);
     }
 
-    // Construct the prompt
-    const prompt = promptTemplate
-      .replace("{gitStagedChanges}", gitData.gitStagedChanges)
-      .replace("{gitDiff}", gitData.gitDiff)
-      .replace("{userContext}", userContext);
-
     // Use Ollama library with streaming
+    const ollama = new Ollama();
     const response = await ollama.generate({
       model: args.model || "llama3.2:latest",
       prompt: prompt,
@@ -245,8 +309,22 @@ async function generateCommitMessage(
         break;
       }
     }
-
-    return fullResponse.trim();
+    // Only use the first line of the response, strip quotes/markdown, and trim
+    let aiMessage = fullResponse
+      .trim()
+      .split("\n")[0]
+      .replace(/^['"`]+|['"`]+$/g, "");
+    // If the message is too generic or empty, warn the user
+    if (
+      !aiMessage ||
+      aiMessage.toLowerCase().includes("commit message") ||
+      aiMessage.length < 5
+    ) {
+      console.warn(
+        "⚠️  AI returned a generic or empty message. Consider adding more context or editing manually."
+      );
+    }
+    return aiMessage;
   } catch (error) {
     console.error("Error generating commit message:", error.message);
     throw error;
@@ -260,7 +338,6 @@ async function main() {
     const args = parseArgs();
 
     // Determine if conventional commits should be used
-    // Priority: CLI args > custom conventional type
     const useConventional =
       args.useAiConventional !== undefined
         ? args.useAiConventional
@@ -281,19 +358,40 @@ async function main() {
       );
     }
 
+    // Fetch recent commits and branch name
+    const [recentCommits, branchName] = await Promise.all([
+      getRecentCommits(),
+      getBranchName(),
+    ]);
+    const gitDiffSummary = summarizeDiff(gitData.gitDiff);
+
+    // Build the improved prompt
+    let promptTemplate = null;
+    if (args.promptTemplate) {
+      promptTemplate = loadPromptTemplate(args.promptTemplate);
+      validatePromptTemplate(promptTemplate);
+    } else {
+      promptTemplate = loadPromptTemplate();
+    }
+
+    // Generate commit message
     console.log("Generating commit message...");
     const commitMessage = await generateCommitMessage(
       gitData,
-      args, // Pass args here
+      args,
       userContext,
-      useConventional
+      useConventional,
+      promptTemplate // Pass the improved prompt
     );
 
     if (commitMessage) {
-      console.log("\nGenerated Commit Message:");
-
       // Remove quotes from start and end of commit message
       let cleanCommitMessage = commitMessage.replace(/^["']|["']$/g, "");
+
+      // Enforce 80-character limit
+      if (cleanCommitMessage.length > 80) {
+        cleanCommitMessage = cleanCommitMessage.slice(0, 77) + "...";
+      }
 
       // Apply custom conventional type if provided
       if (args.conventionalType !== undefined) {
@@ -311,24 +409,53 @@ async function main() {
         );
       }
 
+      // Show the generated message
+      console.log("\nGenerated Commit Message:");
       console.log("\x1b[36m" + cleanCommitMessage + "\x1b[0m"); // Cyan color
 
-      // Handle clipboard copying based on flags
+      // If autoCopy is enabled, copy and exit immediately (no prompt to edit/regenerate)
       if (args.autoCopy) {
-        // Auto-copy without prompting
         const copySuccess = await copyToClipboard(cleanCommitMessage);
         console.log(
           copySuccess ? "✅ Copied to clipboard!" : "❌ Clipboard copy failed."
         );
         process.exit(0);
-      } else {
-        // Ask user if they want to copy to clipboard
-        const copyResponse = await getUserInput("\nCopy to clipboard? (Y/n): ");
-        const shouldCopy =
-          copyResponse.trim().toLowerCase() !== "n" &&
-          copyResponse.trim().toLowerCase() !== "no";
+      }
 
-        if (shouldCopy) {
+      // Interactive refinement
+      while (true) {
+        const action = await getUserInput("Accept or regenerate? (a/r): ");
+        if (action.trim().toLowerCase() === "r") {
+          // Regenerate with same context
+          const newMsg = await generateCommitMessage(
+            gitData,
+            args,
+            userContext,
+            useConventional,
+            promptTemplate
+          );
+          cleanCommitMessage = newMsg.replace(/^(\["'])|(\["'])$/g, "");
+          if (cleanCommitMessage.length > 80) {
+            cleanCommitMessage = cleanCommitMessage.slice(0, 77) + "...";
+          }
+          // Apply custom conventional type if provided
+          if (args.conventionalType !== undefined) {
+            cleanCommitMessage = applyCustomConventionalType(
+              cleanCommitMessage,
+              args.conventionalType
+            );
+          }
+          // Add ticket number if provided
+          if (args.ticketID) {
+            cleanCommitMessage = formatCommitMessage(
+              cleanCommitMessage,
+              args.ticketID
+            );
+          }
+          console.log("\nRegenerated Commit Message:");
+          console.log("\x1b[36m" + cleanCommitMessage + "\x1b[0m");
+        } else if (action.trim().toLowerCase() === "a") {
+          // Automatically copy to clipboard on accept
           const copySuccess = await copyToClipboard(cleanCommitMessage);
           console.log(
             copySuccess
@@ -337,9 +464,22 @@ async function main() {
           );
           process.exit(0);
         } else {
-          process.exit(0);
+          break;
         }
       }
+
+      const copyResponse = await getUserInput("\nCopy to clipboard? (Y/n): ");
+      const shouldCopy =
+        copyResponse.trim().toLowerCase() !== "n" &&
+        copyResponse.trim().toLowerCase() !== "no";
+
+      if (shouldCopy) {
+        const copySuccess = await copyToClipboard(cleanCommitMessage);
+        console.log(
+          copySuccess ? "✅ Copied to clipboard!" : "❌ Clipboard copy failed."
+        );
+      }
+      process.exit(0);
     } else {
       console.log("Failed to generate commit message.");
     }

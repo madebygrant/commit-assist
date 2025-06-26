@@ -9,7 +9,11 @@ An AI-powered commit message generator that uses Ollama to create meaningful Git
 - 📋 **Clipboard Integration**: Automatically copy generated messages to clipboard
 - 🎯 **Context Aware**: Add custom context to improve message generation
 - 🏷️ **Ticket Integration**: Append ticket IDs to commit messages
-- ⚙️ **Customizable**: Choose different Ollama models and prompt templates
+- 🕑 **Recent Commit & Branch Context**: AI sees your last 3 commits and current branch for better relevance
+- 🗂️ **Diff Summarization**: AI sees a summary of changed files for clarity
+- 🔁 **Message Regeneration**: Accept or regenerate commit messages interactively
+- ⚙️ **Customizable Prompt Template**: Uses an external `prompt.md` file for the AI prompt, with full support for placeholders and user customization
+- 🛠️ **Robust Placeholder Replacement**: All placeholders in the prompt template (e.g., `{gitStagedChanges}`, `{branchName}`) are replaced with real context
 
 ## Prerequisites
 
@@ -75,28 +79,71 @@ After global installation, you can use `commit-assist` from any directory in you
 
 ## Usage
 
-### Basic Usage
-
-Generate a commit message for your staged changes:
+Stage your changes with `git add`, then run:
 
 ```bash
-commit-assist
+commit-assist [options]
 ```
 
-### Command Line Options
+### Options
 
-| Option                         | Short  | Description                               | Example                                                                                                                                        |
-| ------------------------------ | ------ | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--help`                       | `-h`   | Show help message                         | `commit-assist -h`                                                                                                                             |
-| `--context <text>`             | `-ctx` | Add context for better message generation | `commit-assist -ctx "fix login bug"`                                                                                                           |
-| `--conventional-format`        | `-cf`  | Use conventional commit format            | `commit-assist -cf`                                                                                                                            |
-| `--type <type>`                | `-t`   | Custom conventional commit type           | `commit-assist -t "fix"`                                                                                                                       |
-| `--ticketid <ticket>`          | `-tid` | Append ticket ID to message               | `commit-assist -tid "PROJ-123"`                                                                                                                |
-| `--copy`                       | `-c`   | Auto-copy to clipboard (no prompt)        | `commit-assist -c`                                                                                                                             |
-| `--model <model>`              | `-m`   | Specify Ollama model to use               | `commit-assist -m "codellama:latest"`                                                                                                          |
-| `--prompt-template <template>` | `-pt`  | Use custom prompt template                | `commit-assist -pt "Write a commit message for these changes: {gitStagedChanges}. Additional context: {userContext}. Diff details: {gitDiff}"` |
+- `-h, --help`                          Show help message
+- `-ctx, --context <text>`              Additional context for commit message
+- `-cf, --conventional-format`          Tell AI to use conventional commit format
+- `-t, --type <type>`                   Custom conventional commit type
+- `-tid, --ticketid <ticket>`           Ticket id/number to append
+- `-c, --copy`                          Automatically copy to clipboard (no prompt)
+- `-m, --model <model>`                 Specify Ollama model to use
+- `-pt, --prompt-template <path>`       Path to custom prompt template markdown file (overrides prompt.md)
 
-### Examples
+## Prompt Template
+
+Commit Assist can use an external `prompt.md` file as the default prompt for the AI. You can fully customize this file, or specify a custom prompt template file at runtime using the `--prompt-template` (or `-pt`) flag. For example:
+
+```bash
+commit-assist --prompt-template ./my-custom-prompt.md
+```
+
+You can use the following placeholders in your template (these are required for full context):
+
+- `{gitStagedChanges}` — Output of `git diff --cached --name-status`, listing staged files and their status (A/M/D).
+- `{gitDiff}` — Full unified diff of all staged changes (`git diff --cached`).
+- `{userContext}` — Any extra context provided by the user.
+- `{recentCommits}` — The last 3 commit messages from the current branch.
+- `{branchName}` — The current git branch name.
+- `{gitDiffSummary}` — A summary listing the names of files changed in the diff.
+- `{conventionalText}` — Instruction for the AI to use or not use Conventional Commit format, depending on user options.
+
+> **Note:** Your custom template file must exist and be readable. Inline templates are not supported.
+
+#### Example `my-custom-prompt.md`
+
+```markdown
+You are an expert at writing concise, high-quality Git commit messages.
+  - Write a single-line commit message (max 80 chars) in the imperative mood.
+  - Summarize the core change and, if possible, briefly state the reason ("why").
+  - Do not include "This commit", "Fixes", or similar phrases.
+  - Do not use markdown, lists, or extra formatting.
+  - If a ticket number is provided, do NOT include it in the message (it will be appended automatically).
+  - If the branch name or recent commits provide context, use it to avoid repetition.
+  - If the staged changes are trivial (e.g., formatting), mention that.
+  - {conventionalText}
+
+	Branch: {branchName}
+
+	Recent commits:
+	{recentCommits}
+
+	Staged changes:
+	{gitStagedChanges}
+
+	Diff summary:
+	{gitDiffSummary}
+
+	User context: {userContext}
+```
+
+## Examples
 
 **Basic commit message generation:**
 
@@ -122,16 +169,16 @@ commit-assist -c -tid "PROJ-123"
 commit-assist -m "codellama:latest" -t "fix" -ctx "database connection"
 ```
 
-**Custom prompt template:**
+**Custom prompt template file:**
 
 ```bash
-commit-assist -pt "Create a brief commit message for:\n\nChanges: {gitStagedChanges}\nDiff: {gitDiff}\nContext: {userContext}
+commit-assist -pt ./my-custom-prompt.md
 ```
 
 **Full example with all options:**
 
 ```bash
-commit-assist -m "llama3.2:latest" -cf -t "feat" -tid "PROJ-456" -ctx "add user authentication" -pt "Generate a detailed commit message:\nChanges: {gitStagedChanges}\nDiff: {gitDiff}\nContext: {userContext}" -c
+commit-assist -m "llama3.2:latest" -cf -t "feat" -tid "PROJ-456" -ctx "add user authentication" -pt ./my-custom-prompt.md -c
 ```
 
 ## Workflow
@@ -142,54 +189,14 @@ commit-assist -m "llama3.2:latest" -cf -t "feat" -tid "PROJ-456" -ctx "add user 
 4. **Copy to clipboard** (automatically or when prompted)
 5. **Commit** using `git commit -m "paste_message_here"`
 
-## Configuration
-
-### Model Priority
+## Model Priority
 
 The script determines which model to use in this order:
 
 1. `--model` or `-m` flag
 2. Default: `llama3.2:latest`
 
-### Prompt Template Variables
-
-You can customize how the AI generates commit messages using the `--prompt-template` or `-pt` flag. Custom templates must include these required variables:
-
-- `{gitStagedChanges}` - Git status of staged files
-- `{gitDiff}` - Git diff of staged changes
-- `{userContext}` - Additional context provided by user
-
-**Example custom template:**
-
-```bash
-commit-assist -pt "Write a commit message for these changes: {gitStagedChanges}. Additional context: {userContext}. Diff details: {gitDiff}"
-```
-
-**Template Validation:**
-
-The script validates that your custom template includes all required placeholders. If any are missing, it will show an error and exit.
-
-## Conventional Commits
-
-When using conventional commit format (`-cf` flag), the AI will generate messages following the [Conventional Commits](https://www.conventionalcommits.org/) specification:
-
-```
-<type>[optional scope]: <description>
-```
-
-### Common Types
-
-- `feat:` - New feature
-- `fix:` - Bug fix
-- `docs:` - Documentation changes
-- `style:` - Code style changes
-- `refactor:` - Code refactoring
-- `test:` - Adding tests
-- `chore:` - Maintenance tasks
-
-## Troubleshooting
-
-### Common Issues
+## Common Issues
 
 **"No staged changes found"**
 
@@ -207,7 +214,7 @@ When using conventional commit format (`-cf` flag), the AI will generate message
 - Cross-platform clipboard support provided by `clipboardy`
 - If clipboard access fails, the message will still be displayed for manual copying
 
-### Dependencies
+## Dependencies
 
 The script requires these npm packages:
 
