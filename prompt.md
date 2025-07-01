@@ -8,6 +8,26 @@ You are an expert at writing concise, high-quality Git commit messages.
   - If the staged changes are trivial (e.g., formatting), mention that.
   - {conventionalText}
 
+  **Examples of well-written commit messages ( conventional format):**
+  - feat(auth): add OAuth2 login support for Google accounts
+  - fix: correct user ID validation in registration endpoint
+  - refactor: extract shared logic into utility functions
+  - docs: update README with setup instructions for new contributors
+  - style: reformat codebase with Prettier
+  - chore: bump dependencies to latest minor versions
+  - test: add unit tests for payment processing module
+  - perf: optimize image loading for faster page render
+
+  **Examples of well-written commit messages (no conventional format):**
+  - Add OAuth2 login support for Google accounts
+  - Correct user ID validation in registration endpoint
+  - Extract shared logic into utility functions
+  - Update README with setup instructions for new contributors
+  - Reformat codebase with Prettier
+  - Upgrade dependencies to latest minor versions
+  - Add unit tests for payment processing module
+  - Optimize image loading for faster page render
+
 	Branch: {branchName}
 
 	Recent commits:
@@ -16,7 +36,11 @@ You are an expert at writing concise, high-quality Git commit messages.
 	Staged changes:
 	{gitStagedChanges}
 
+  Full staged diff:
+  {gitDiff}
+
 	Diff summary:
 	{gitDiffSummary}
 
-	User context: {userContext}
+  User context:
+  {userContext}
