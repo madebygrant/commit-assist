@@ -8,40 +8,10 @@ const fs = require("fs");
 
 const execAsync = promisify(exec);
 
-// Fetch recent commit messages
-async function getRecentCommits() {
-  try {
-    const { stdout } = await execAsync("git log -n 3 --oneline");
-    return stdout.trim();
-  } catch {
-    return "";
-  }
-}
-
-// Fetch current branch name
-async function getBranchName() {
-  try {
-    const { stdout } = await execAsync("git rev-parse --abbrev-ref HEAD");
-    return stdout.trim();
-  } catch {
-    return "";
-  }
-}
-
-// Summarize the diff by listing changed files
-function summarizeDiff(gitDiff) {
-  const fileMatches = [...gitDiff.matchAll(/^diff --git a\/(.+?) b\/.+$/gm)];
-  const files = fileMatches.map((match) => match[1]);
-  return files.length
-    ? `Files changed: ${files.join(", ")}`
-    : "No files changed";
-}
-
 // Helper function to parse CLI arguments
 function parseArgs() {
   const args = process.argv.slice(2);
   const result = {};
-
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--help" || args[i] === "-h") {
       showHelp();
@@ -65,9 +35,10 @@ function parseArgs() {
     } else if (args[i] === "--prompt-template" || args[i] === "-pt") {
       result.promptTemplate = args[i + 1] || "";
       i++; // Skip the next argument as it's the value
+    } else if (args[i] === "--debug") {
+      result.debug = true;
     }
   }
-
   return result;
 }
 
@@ -96,6 +67,44 @@ Examples:
   commit-assist -m "codellama:latest" -c
   commit-assist -pt ./my-custom-prompt.md
 `);
+}
+
+// Helper for debug logging
+function debugLog(debug, ...args) {
+  if (debug) {
+    console.log("[DEBUG]", ...args);
+  }
+}
+
+// Fetch recent commit messages
+async function getRecentCommits(debug) {
+  try {
+    const { stdout } = await execAsync("git log -n 3 --oneline");
+    return stdout.trim();
+  } catch (err) {
+    debugLog(debug, "Error in getRecentCommits:", err);
+    return "";
+  }
+}
+
+// Fetch current branch name
+async function getBranchName(debug) {
+  try {
+    const { stdout } = await execAsync("git rev-parse --abbrev-ref HEAD");
+    return stdout.trim();
+  } catch (err) {
+    debugLog(debug, "Error in getBranchName:", err);
+    return "";
+  }
+}
+
+// Summarize the diff by listing changed files
+function summarizeDiff(gitDiff) {
+  const fileMatches = [...gitDiff.matchAll(/^diff --git a\/(.+?) b\/.+$/gm)];
+  const files = fileMatches.map((match) => match[1]);
+  return files.length
+    ? `Files changed: ${files.join(", ")}`
+    : "No files changed";
 }
 
 // Helper function to validate prompt template
@@ -165,32 +174,58 @@ function formatCommitMessage(message, ticketID) {
 }
 
 // Helper function to get both git status and diff in parallel
-async function getGitData() {
+async function getGitData(debug) {
   try {
     const maxBuffer = 10 * 1024 * 1024; // 10 MB
-    const [statusResult, diffResult] = await Promise.all([
-      execAsync("git diff --cached --name-status", { maxBuffer }),
-      execAsync("git diff --cached", { maxBuffer }),
-    ]);
-
-    const gitStagedChanges = statusResult.stdout.trim();
-    const gitDiff = diffResult.stdout.trim();
-
-    // Early exit if no staged changes
-    if (!gitStagedChanges) {
-      console.log(
-        "❌ No staged changes found. Please stage some changes first with 'git add'."
+    // Check if we're in a git repository
+    try {
+      await execAsync("git rev-parse --is-inside-work-tree");
+    } catch (err) {
+      console.error(
+        "❌ Not a git repository. Please run this script inside a git repo."
       );
-      process.exit(0);
+      debugLog(debug, "git rev-parse error:", err);
+      process.exit(1);
     }
-
+    // Fast check: are there any staged changes?
+    try {
+      await execAsync("git diff --cached --quiet");
+    } catch (err) {
+      // There are staged changes (git diff --cached --quiet exits with 1 if there are changes)
+      if (err.code !== 1) {
+        debugLog(debug, "Error in git diff --cached --quiet:", err);
+      }
+    }
+    // Get both name-status and full diff in parallel
+    let statusResult, diffResult;
+    try {
+      [statusResult, diffResult] = await Promise.all([
+        execAsync("git diff --cached --name-status", { maxBuffer }),
+        execAsync("git diff --cached", { maxBuffer }),
+      ]);
+    } catch (err) {
+      debugLog(debug, "Error fetching git diff:", err);
+      throw err;
+    }
+    const gitStagedChanges = statusResult.stdout;
+    const gitDiff = diffResult.stdout;
+    if (!gitStagedChanges.trim()) {
+      // No staged changes
+      return {
+        gitStagedChanges: "",
+        gitDiff: "",
+        hasStaged: false,
+      };
+    }
     return {
-      gitStagedChanges: gitStagedChanges || "No staged changes found",
-      gitDiff: gitDiff || "No diff available",
+      gitStagedChanges: gitStagedChanges.trim(),
+      gitDiff: gitDiff.trim(),
+      hasStaged: true,
     };
   } catch (error) {
-    console.error("❌ Git error:", error.message);
-    process.exit(1);
+    console.error("❌ Git error in getGitData:", error.message);
+    debugLog(debug, "getGitData error:", error);
+    throw error;
   }
 }
 
@@ -260,24 +295,27 @@ function loadPromptTemplate(customPath = null) {
 async function generateCommitMessage(
   gitData,
   args,
+  recentCommits,
+  branchName,
+  gitDiffSummary,
   userContext = "",
   useConventional = false,
   promptTemplate = null // New parameter
 ) {
+  const debug = args.debug;
   try {
     // Prepare all possible values for template replacement
     const values = {
       gitStagedChanges: gitData.gitStagedChanges,
       gitDiff: gitData.gitDiff,
       userContext,
-      recentCommits: args.recentCommits || "",
-      branchName: args.branchName || "",
-      gitDiffSummary: args.gitDiffSummary || "",
+      recentCommits: recentCommits || "",
+      branchName: branchName || "",
+      gitDiffSummary: gitDiffSummary || "",
       conventionalText: useConventional
         ? "Use the Conventional Commits format (type: scope: subject)."
         : "Do not use Conventional Commit types (e.g., feat:, fix:, docs:).",
     };
-
     let prompt;
     if (promptTemplate) {
       prompt = fillTemplate(promptTemplate, values);
@@ -290,24 +328,33 @@ async function generateCommitMessage(
       const defaultTemplate = loadPromptTemplate();
       prompt = fillTemplate(defaultTemplate, values);
     }
-
+    debugLog(debug, "Prompt sent to AI:\n", prompt);
     // Use Ollama library with streaming
     const ollama = new Ollama();
-    const response = await ollama.generate({
-      model: args.model || "llama3.2:latest",
-      prompt: prompt,
-      stream: true,
-    });
-
+    let response;
+    try {
+      response = await ollama.generate({
+        model: args.model || "llama3.2:latest",
+        prompt: prompt,
+        stream: true,
+      });
+    } catch (err) {
+      debugLog(debug, "Error from Ollama generate:", err);
+      throw err;
+    }
     let fullResponse = "";
-
-    for await (const part of response) {
-      if (part.response) {
-        fullResponse += part.response;
+    try {
+      for await (const part of response) {
+        if (part.response) {
+          fullResponse += part.response;
+        }
+        if (part.done) {
+          break;
+        }
       }
-      if (part.done) {
-        break;
-      }
+    } catch (err) {
+      debugLog(debug, "Error streaming Ollama response:", err);
+      throw err;
     }
     // Only use the first line of the response, strip quotes/markdown, and trim
     let aiMessage = fullResponse
@@ -323,12 +370,49 @@ async function generateCommitMessage(
       console.warn(
         "⚠️  AI returned a generic or empty message. Consider adding more context or editing manually."
       );
+      debugLog(debug, "AI full response:", fullResponse);
     }
     return aiMessage;
   } catch (error) {
     console.error("Error generating commit message:", error.message);
+    debugLog(debug, "generateCommitMessage error:", error);
     throw error;
   }
+}
+
+// Helper function to refine commit message interactively
+async function refineCommitMessage(
+  initialMessage,
+  gitData,
+  args,
+  recentCommits,
+  branchName,
+  gitDiffSummary,
+  userContext,
+  useConventional,
+  promptTemplate
+) {
+  let cleanCommitMessage = initialMessage.replace(/^["']|["']$/g, "");
+  // Enforce 80-character limit
+  // if (cleanCommitMessage.length > 80) {
+  // 	cleanCommitMessage = cleanCommitMessage.slice(0, 77) + "...";
+  // }
+
+  // Apply custom conventional type if provided
+  if (args.conventionalType !== undefined) {
+    cleanCommitMessage = applyCustomConventionalType(
+      cleanCommitMessage,
+      args.conventionalType
+    );
+  }
+
+  // Add ticket number if provided
+  if (args.ticketID) {
+    cleanCommitMessage = formatCommitMessage(cleanCommitMessage, args.ticketID);
+  }
+  console.log("\nRegenerated Commit Message:");
+  console.log("\x1b[36m" + cleanCommitMessage + "\x1b[0m");
+  return cleanCommitMessage;
 }
 
 // Main execution
@@ -336,6 +420,7 @@ async function main() {
   try {
     // Parse CLI arguments once at the start
     const args = parseArgs();
+    const debug = args.debug;
 
     // Determine if conventional commits should be used
     const useConventional =
@@ -345,7 +430,7 @@ async function main() {
 
     // Get git data first (fast exit if no changes)
     console.log("Checking staged changes...");
-    const gitData = await getGitData();
+    const gitData = await getGitData(debug);
 
     // Get user context - either from CLI or interactive prompt
     let userContext = "";
@@ -360,8 +445,8 @@ async function main() {
 
     // Fetch recent commits and branch name
     const [recentCommits, branchName] = await Promise.all([
-      getRecentCommits(),
-      getBranchName(),
+      getRecentCommits(debug),
+      getBranchName(debug),
     ]);
     const gitDiffSummary = summarizeDiff(gitData.gitDiff);
 
@@ -379,6 +464,9 @@ async function main() {
     const commitMessage = await generateCommitMessage(
       gitData,
       args,
+      recentCommits,
+      branchName,
+      gitDiffSummary,
       userContext,
       useConventional,
       promptTemplate // Pass the improved prompt
@@ -389,9 +477,9 @@ async function main() {
       let cleanCommitMessage = commitMessage.replace(/^["']|["']$/g, "");
 
       // Enforce 80-character limit
-      if (cleanCommitMessage.length > 80) {
-        cleanCommitMessage = cleanCommitMessage.slice(0, 77) + "...";
-      }
+      // if (cleanCommitMessage.length > 80) {
+      // 	cleanCommitMessage = cleanCommitMessage.slice(0, 77) + "...";
+      // }
 
       // Apply custom conventional type if provided
       if (args.conventionalType !== undefined) {
@@ -424,37 +512,33 @@ async function main() {
 
       // Interactive refinement
       while (true) {
-        const action = await getUserInput("Accept or regenerate? (a/r): ");
+        const action = await getUserInput(
+          "Accept, regenerate, or quit? (a/r/q): "
+        );
         if (action.trim().toLowerCase() === "r") {
           // Regenerate with same context
           const newMsg = await generateCommitMessage(
             gitData,
             args,
+            recentCommits,
+            branchName,
+            gitDiffSummary,
             userContext,
             useConventional,
             promptTemplate
           );
-          cleanCommitMessage = newMsg.replace(/^(\["'])|(\["'])$/g, "");
-          if (cleanCommitMessage.length > 80) {
-            cleanCommitMessage = cleanCommitMessage.slice(0, 77) + "...";
-          }
-          // Apply custom conventional type if provided
-          if (args.conventionalType !== undefined) {
-            cleanCommitMessage = applyCustomConventionalType(
-              cleanCommitMessage,
-              args.conventionalType
-            );
-          }
-          // Add ticket number if provided
-          if (args.ticketID) {
-            cleanCommitMessage = formatCommitMessage(
-              cleanCommitMessage,
-              args.ticketID
-            );
-          }
-          console.log("\nRegenerated Commit Message:");
-          console.log("\x1b[36m" + cleanCommitMessage + "\x1b[0m");
-        } else if (action.trim().toLowerCase() === "a") {
+          cleanCommitMessage = await refineCommitMessage(
+            newMsg,
+            gitData,
+            args,
+            recentCommits,
+            branchName,
+            gitDiffSummary,
+            userContext,
+            useConventional,
+            promptTemplate
+          );
+        } else if (action.trim().toLowerCase() === "a" || action === "") {
           // Automatically copy to clipboard on accept
           const copySuccess = await copyToClipboard(cleanCommitMessage);
           console.log(
@@ -462,6 +546,9 @@ async function main() {
               ? "✅ Copied to clipboard!"
               : "❌ Clipboard copy failed."
           );
+          process.exit(0);
+        } else if (action.trim().toLowerCase() === "q") {
+          console.log("Quitting without copying commit message.");
           process.exit(0);
         } else {
           break;
