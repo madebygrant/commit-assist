@@ -125,17 +125,17 @@ function validatePromptTemplate(template) {
     "{conventionalText}",
   ];
   const missingPlaceholders = requiredPlaceholders.filter(
-    (placeholder) => !template.includes(placeholder),
+    (placeholder) => !template.includes(placeholder)
   );
 
   if (missingPlaceholders.length > 0) {
     console.error(
       `❌ Invalid prompt template. Missing required placeholders: ${missingPlaceholders.join(
-        ", ",
-      )}`,
+        ", "
+      )}`
     );
     console.error(
-      "Required placeholders: {gitStagedChanges}, {gitDiff}, {userContext}, {recentCommits}, {branchName}, {gitDiffSummary}, {conventionalText}",
+      "Required placeholders: {gitStagedChanges}, {gitDiff}, {userContext}, {recentCommits}, {branchName}, {gitDiffSummary}, {conventionalText}"
     );
     process.exit(1);
   }
@@ -188,7 +188,7 @@ async function getGitData(debug) {
       await execAsync("git rev-parse --is-inside-work-tree", { maxBuffer });
     } catch (err) {
       console.error(
-        "❌ Not a git repository. Please run this script inside a git repo.",
+        "❌ Not a git repository. Please run this script inside a git repo."
       );
       debugLog(debug, "git rev-parse error:", err);
       process.exit(1);
@@ -280,7 +280,7 @@ function loadPromptTemplate(customPath = null) {
     // Validate the path exists and is a file
     if (!fs.existsSync(templatePath) || !fs.statSync(templatePath).isFile()) {
       console.error(
-        `❌ Prompt template path does not exist or is not a file: ${templatePath}`,
+        `❌ Prompt template path does not exist or is not a file: ${templatePath}`
       );
       process.exit(1);
     }
@@ -292,7 +292,7 @@ function loadPromptTemplate(customPath = null) {
   } catch (e) {
     console.error(
       `❌ Could not load prompt template at ${templatePath}:`,
-      e.message,
+      e.message
     );
     process.exit(1);
   }
@@ -306,7 +306,7 @@ async function generateCommitMessage(
   gitDiffSummary,
   userContext = "",
   useConventional = false,
-  promptTemplate = null, // New parameter
+  promptTemplate = null // New parameter
 ) {
   const debug = args.debug;
   try {
@@ -323,25 +323,25 @@ async function generateCommitMessage(
         : "Do not use Conventional Commit types (e.g., feat:, fix:, docs:).",
       examples: useConventional
         ? `
-        - feat(auth): add OAuth2 login support for Google accounts
-        - fix: correct user ID validation in registration endpoint
-        - refactor: extract shared logic into utility functions
-        - docs: update README with setup instructions for new contributors
-        - style: reformat codebase with Prettier
-        - chore: bump dependencies to latest minor versions
-        - test: add unit tests for payment processing module
-        - perf: optimize image loading for faster page render
+- feat(auth): add OAuth2 login support for Google accounts
+- fix: correct user ID validation in registration endpoint
+- refactor: extract shared logic into utility functions
+- docs: update README with setup instructions for new contributors
+- style: reformat codebase with Prettier
+- chore: bump dependencies to latest minor versions
+- test: add unit tests for payment processing module
+- perf: optimize image loading for faster page render
         `
         : `
-        - Add OAuth2 login support for Google accounts
-        - Correct user ID validation in registration endpoint
-        - Extract shared logic into utility functions
-        - Update README with setup instructions for new contributors
-        - Reformat codebase with Prettier
-        - Upgrade dependencies to latest minor versions
-        - Add unit tests for payment processing module
-        - Optimize image loading for faster page render
-        `,
+- Add OAuth2 login support for Google accounts
+- Correct user ID validation in registration endpoint
+- Extract shared logic into utility functions
+- Update README with setup instructions for new contributors
+- Reformat codebase with Prettier
+- Upgrade dependencies to latest minor versions
+- Add unit tests for payment processing module
+- Optimize image loading for faster page render
+`,
     };
     let prompt;
     if (promptTemplate) {
@@ -396,7 +396,7 @@ async function generateCommitMessage(
       aiMessage.length < 5
     ) {
       console.warn(
-        "⚠️  AI returned a generic or empty message. Consider adding more context or editing manually.",
+        "⚠️  AI returned a generic or empty message. Consider adding more context or editing manually."
       );
       debugLog(debug, "AI full response:", fullResponse);
     }
@@ -426,7 +426,7 @@ function cleanAndFormatMessage(message, args) {
   if (args.conventionalType !== undefined) {
     cleanMessage = applyCustomConventionalType(
       cleanMessage,
-      args.conventionalType,
+      args.conventionalType
     );
   }
 
@@ -439,17 +439,7 @@ function cleanAndFormatMessage(message, args) {
 }
 
 // Helper function to refine commit message interactively
-async function refineCommitMessage(
-  initialMessage,
-  gitData,
-  args,
-  recentCommits,
-  branchName,
-  gitDiffSummary,
-  userContext,
-  useConventional,
-  promptTemplate,
-) {
+async function refineCommitMessage(initialMessage, args) {
   const cleanCommitMessage = cleanAndFormatMessage(initialMessage, args);
   console.log("\nRegenerated Commit Message:");
   console.log("\x1b[36m" + cleanCommitMessage + "\x1b[0m");
@@ -467,7 +457,7 @@ async function main() {
     const useConventional =
       args.useAiConventional !== undefined
         ? args.useAiConventional
-        : (args.conventionalType ?? false);
+        : args.conventionalType ?? false;
 
     // Get git data first (fast exit if no changes)
     console.log("Checking staged changes...");
@@ -480,7 +470,7 @@ async function main() {
       console.log(`Using context: "${userContext}"`);
     } else {
       userContext = await getUserInput(
-        "Enter any additional context (optional): ",
+        "Enter any additional context (optional): "
       );
     }
 
@@ -510,7 +500,7 @@ async function main() {
       gitDiffSummary,
       userContext,
       useConventional,
-      promptTemplate, // Pass the improved prompt
+      promptTemplate // Pass the improved prompt
     );
 
     if (commitMessage) {
@@ -525,7 +515,7 @@ async function main() {
       if (args.autoCopy) {
         const copySuccess = await copyToClipboard(cleanCommitMessage);
         console.log(
-          copySuccess ? "✅ Copied to clipboard!" : "❌ Clipboard copy failed.",
+          copySuccess ? "✅ Copied to clipboard!" : "❌ Clipboard copy failed."
         );
         process.exit(0);
       }
@@ -533,7 +523,7 @@ async function main() {
       // Interactive refinement
       while (true) {
         const action = await getUserInput(
-          "Accept, regenerate, or quit? (a/r/q): ",
+          "Accept, regenerate, or quit? (a/r/q): "
         );
         if (action.trim().toLowerCase() === "r") {
           // Regenerate with same context
@@ -545,7 +535,7 @@ async function main() {
             gitDiffSummary,
             userContext,
             useConventional,
-            promptTemplate,
+            promptTemplate
           );
           cleanCommitMessage = await refineCommitMessage(
             newMsg,
@@ -556,7 +546,7 @@ async function main() {
             gitDiffSummary,
             userContext,
             useConventional,
-            promptTemplate,
+            promptTemplate
           );
         } else if (action.trim().toLowerCase() === "a" || action === "") {
           // Automatically copy to clipboard on accept
@@ -564,7 +554,7 @@ async function main() {
           console.log(
             copySuccess
               ? "✅ Copied to clipboard!"
-              : "❌ Clipboard copy failed.",
+              : "❌ Clipboard copy failed."
           );
           process.exit(0);
         } else if (action.trim().toLowerCase() === "q") {
@@ -583,7 +573,7 @@ async function main() {
       if (shouldCopy) {
         const copySuccess = await copyToClipboard(cleanCommitMessage);
         console.log(
-          copySuccess ? "✅ Copied to clipboard!" : "❌ Clipboard copy failed.",
+          copySuccess ? "✅ Copied to clipboard!" : "❌ Clipboard copy failed."
         );
       }
       process.exit(0);
