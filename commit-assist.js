@@ -1,12 +1,34 @@
 #!/usr/bin/env node
 
-const { exec } = require("child_process");
-const { promisify } = require("util");
+const { exec } = require("node:child_process");
+const { promisify } = require("node:util");
 const { Ollama } = require("ollama");
 const readline = require("readline");
-const fs = require("fs");
+const fs = require("node:fs");
+const path = require("node:path");
+const { consola } = require("consola");
 
 const execAsync = promisify(exec);
+
+// Create a custom debug logger with teal background
+const debugLogger = consola.withTag("DEBUG").withDefaults({
+  formatOptions: {
+    colors: true,
+    compact: false,
+  },
+});
+
+// Helper for debug logging
+function debugLog(debug, ...args) {
+  if (debug) {
+    // Use ANSI escape codes for teal background and black text on tag only
+    const background = "\x1b[48;5;10m"; // Green background
+    const blackText = "\x1b[30m"; // Black text
+    const reset = "\x1b[0m"; // Reset colors
+    const message = args.join(" ");
+    debugLogger.info(`${background}${blackText} DEBUG ${reset} ${message}`);
+  }
+}
 
 // Helper function to parse CLI arguments
 function parseArgs() {
@@ -44,7 +66,7 @@ function parseArgs() {
 
 // Helper function to display help information
 function showHelp() {
-  console.log(`
+  consola.box(`
 Usage: commit-assist [options]
 
 Generate AI-powered commit messages for your staged git changes.
@@ -67,13 +89,6 @@ Examples:
   commit-assist -m "codellama:latest" -c
   commit-assist -pt ./my-custom-prompt.md
 `);
-}
-
-// Helper for debug logging
-function debugLog(debug, ...args) {
-  if (debug) {
-    console.log("[DEBUG]", ...args);
-  }
 }
 
 // Fetch recent commit messages
@@ -125,17 +140,17 @@ function validatePromptTemplate(template) {
     "{conventionalText}",
   ];
   const missingPlaceholders = requiredPlaceholders.filter(
-    (placeholder) => !template.includes(placeholder)
+    (placeholder) => !template.includes(placeholder),
   );
 
   if (missingPlaceholders.length > 0) {
-    console.error(
-      `❌ Invalid prompt template. Missing required placeholders: ${missingPlaceholders.join(
-        ", "
-      )}`
+    consola.error(
+      `Invalid prompt template. Missing required placeholders: ${missingPlaceholders.join(
+        ", ",
+      )}`,
     );
-    console.error(
-      "Required placeholders: {gitStagedChanges}, {gitDiff}, {userContext}, {recentCommits}, {branchName}, {gitDiffSummary}, {conventionalText}"
+    consola.error(
+      "Required placeholders: {gitStagedChanges}, {gitDiff}, {userContext}, {recentCommits}, {branchName}, {gitDiffSummary}, {conventionalText}",
     );
     process.exit(1);
   }
@@ -187,8 +202,8 @@ async function getGitData(debug) {
     try {
       await execAsync("git rev-parse --is-inside-work-tree", { maxBuffer });
     } catch (err) {
-      console.error(
-        "❌ Not a git repository. Please run this script inside a git repo."
+      consola.error(
+        "Not a git repository. Please run this script inside a git repo.",
       );
       debugLog(debug, "git rev-parse error:", err);
       process.exit(1);
@@ -229,7 +244,7 @@ async function getGitData(debug) {
       hasStaged: true,
     };
   } catch (error) {
-    console.error("❌ Git error in getGitData:", error.message);
+    consola.error("Git error in getGitData:", error.message);
     debugLog(debug, "getGitData error:", error);
     throw error;
   }
@@ -242,13 +257,13 @@ async function copyToClipboard(text) {
     await clipboardy.default.write(text);
     return true;
   } catch (error) {
-    console.error("❌ Clipboard copy failed:", error.message);
+    consola.error("Clipboard copy failed:", error.message);
     return false;
   }
 }
 
 // Helper function to get user input from command line
-function getUserInput(question) {
+async function getUserInput(question) {
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
@@ -271,7 +286,6 @@ function fillTemplate(template, values) {
 
 // Helper function to load the prompt template from a custom path or default prompt.md
 function loadPromptTemplate(customPath = null) {
-  const path = require("path");
   let templatePath;
   if (customPath) {
     templatePath = path.isAbsolute(customPath)
@@ -279,8 +293,8 @@ function loadPromptTemplate(customPath = null) {
       : path.join(process.cwd(), customPath);
     // Validate the path exists and is a file
     if (!fs.existsSync(templatePath) || !fs.statSync(templatePath).isFile()) {
-      console.error(
-        `❌ Prompt template path does not exist or is not a file: ${templatePath}`
+      consola.error(
+        `Prompt template path does not exist or is not a file: ${templatePath}`,
       );
       process.exit(1);
     }
@@ -290,9 +304,9 @@ function loadPromptTemplate(customPath = null) {
   try {
     return fs.readFileSync(templatePath, "utf8");
   } catch (e) {
-    console.error(
-      `❌ Could not load prompt template at ${templatePath}:`,
-      e.message
+    consola.error(
+      `Could not load prompt template at ${templatePath}:`,
+      e.message,
     );
     process.exit(1);
   }
@@ -306,7 +320,7 @@ async function generateCommitMessage(
   gitDiffSummary,
   userContext = "",
   useConventional = false,
-  promptTemplate = null // New parameter
+  promptTemplate = null, // New parameter
 ) {
   const debug = args.debug;
   try {
@@ -395,14 +409,14 @@ async function generateCommitMessage(
       aiMessage.toLowerCase().includes("commit message") ||
       aiMessage.length < 5
     ) {
-      console.warn(
-        "⚠️  AI returned a generic or empty message. Consider adding more context or editing manually."
+      consola.warn(
+        "⚠️  AI returned a generic or empty message. Consider adding more context or editing manually.",
       );
       debugLog(debug, "AI full response:", fullResponse);
     }
     return aiMessage;
   } catch (error) {
-    console.error("Error generating commit message:", error.message);
+    consola.error("Error generating commit message:", error.message);
     debugLog(debug, "generateCommitMessage error:", error);
     throw error;
   }
@@ -426,7 +440,7 @@ function cleanAndFormatMessage(message, args) {
   if (args.conventionalType !== undefined) {
     cleanMessage = applyCustomConventionalType(
       cleanMessage,
-      args.conventionalType
+      args.conventionalType,
     );
   }
 
@@ -441,8 +455,8 @@ function cleanAndFormatMessage(message, args) {
 // Helper function to refine commit message interactively
 async function refineCommitMessage(initialMessage, args) {
   const cleanCommitMessage = cleanAndFormatMessage(initialMessage, args);
-  console.log("\nRegenerated Commit Message:");
-  console.log("\x1b[36m" + cleanCommitMessage + "\x1b[0m");
+  consola.success("Regenerated Commit Message:");
+  consola.box(cleanCommitMessage);
   return cleanCommitMessage;
 }
 
@@ -457,20 +471,20 @@ async function main() {
     const useConventional =
       args.useAiConventional !== undefined
         ? args.useAiConventional
-        : args.conventionalType ?? false;
+        : (args.conventionalType ?? false);
 
     // Get git data first (fast exit if no changes)
-    console.log("Checking staged changes...");
+    consola.info("Checking staged changes...");
     const gitData = await getGitData(debug);
 
     // Get user context - either from CLI or interactive prompt
     let userContext = "";
     if (args.context !== undefined) {
       userContext = args.context;
-      console.log(`Using context: "${userContext}"`);
+      consola.info(`Using context: "${userContext}"`);
     } else {
       userContext = await getUserInput(
-        "Enter any additional context (optional): "
+        "Enter any additional context (optional): ",
       );
     }
 
@@ -491,7 +505,7 @@ async function main() {
     }
 
     // Generate commit message
-    console.log("Generating commit message...");
+    consola.start("Generating commit message...");
     const commitMessage = await generateCommitMessage(
       gitData,
       args,
@@ -500,7 +514,7 @@ async function main() {
       gitDiffSummary,
       userContext,
       useConventional,
-      promptTemplate // Pass the improved prompt
+      promptTemplate,
     );
 
     if (commitMessage) {
@@ -508,25 +522,26 @@ async function main() {
       let cleanCommitMessage = cleanAndFormatMessage(commitMessage, args);
 
       // Show the generated message
-      console.log("\nGenerated Commit Message:");
-      console.log("\x1b[36m" + cleanCommitMessage + "\x1b[0m"); // Cyan color
+      consola.success("Generated Commit Message:");
+      consola.box(cleanCommitMessage);
 
       // If autoCopy is enabled, copy and exit immediately (no prompt to edit/regenerate)
       if (args.autoCopy) {
         const copySuccess = await copyToClipboard(cleanCommitMessage);
-        console.log(
-          copySuccess ? "✅ Copied to clipboard!" : "❌ Clipboard copy failed."
-        );
+        copySuccess
+          ? consola.success("Copied to clipboard!")
+          : consola.error("Clipboard copy failed.");
         process.exit(0);
       }
 
       // Interactive refinement
       while (true) {
         const action = await getUserInput(
-          "Accept, regenerate, or quit? (a/r/q): "
+          "Accept, regenerate, or quit? (a/r/q): ",
         );
         if (action.trim().toLowerCase() === "r") {
           // Regenerate with same context
+          consola.start("Generating commit message...");
           const newMsg = await generateCommitMessage(
             gitData,
             args,
@@ -535,7 +550,7 @@ async function main() {
             gitDiffSummary,
             userContext,
             useConventional,
-            promptTemplate
+            promptTemplate,
           );
           cleanCommitMessage = await refineCommitMessage(
             newMsg,
@@ -546,19 +561,17 @@ async function main() {
             gitDiffSummary,
             userContext,
             useConventional,
-            promptTemplate
+            promptTemplate,
           );
         } else if (action.trim().toLowerCase() === "a" || action === "") {
           // Automatically copy to clipboard on accept
           const copySuccess = await copyToClipboard(cleanCommitMessage);
-          console.log(
-            copySuccess
-              ? "✅ Copied to clipboard!"
-              : "❌ Clipboard copy failed."
-          );
+          copySuccess
+            ? consola.success("Copied to clipboard!")
+            : consola.error("Clipboard copy failed.");
           process.exit(0);
         } else if (action.trim().toLowerCase() === "q") {
-          console.log("Quitting without copying commit message.");
+          consola.info("Quitting without copying commit message.");
           process.exit(0);
         } else {
           break;
@@ -572,16 +585,16 @@ async function main() {
 
       if (shouldCopy) {
         const copySuccess = await copyToClipboard(cleanCommitMessage);
-        console.log(
-          copySuccess ? "✅ Copied to clipboard!" : "❌ Clipboard copy failed."
-        );
+        copySuccess
+          ? consola.success("Copied to clipboard!")
+          : consola.error("Clipboard copy failed.");
       }
       process.exit(0);
     } else {
-      console.log("Failed to generate commit message.");
+      consola.error("Failed to generate commit message.");
     }
   } catch (error) {
-    console.error("Error:", error.message);
+    consola.error("Error:", error.message);
     process.exit(1);
   }
 }
