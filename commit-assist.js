@@ -3,7 +3,7 @@
 const { exec } = require("node:child_process");
 const { promisify } = require("node:util");
 const { Ollama } = require("ollama");
-const readline = require("readline");
+const readline = require("node:readline");
 const fs = require("node:fs");
 const path = require("node:path");
 const { consola } = require("consola");

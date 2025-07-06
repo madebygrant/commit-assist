@@ -218,8 +218,9 @@ The script determines which model to use in this order:
 
 The script requires these npm packages:
 
-- `ollama` - Ollama API client
+- `ollama` - Ollama API client for model interaction
 - `clipboardy` - Cross-platform clipboard support
+- `consola` - Elegant console output with interactive prompts
 
 ## Roadmap
 
