@@ -10,7 +10,7 @@ const { consola } = require("consola");
 
 const execAsync = promisify(exec);
 
-// Create a custom debug logger with teal background
+// Create a custom debug logger
 const debugLogger = consola.withTag("DEBUG").withDefaults({
   formatOptions: {
     colors: true,
@@ -21,7 +21,7 @@ const debugLogger = consola.withTag("DEBUG").withDefaults({
 // Helper for debug logging
 function debugLog(debug, ...args) {
   if (debug) {
-    // Use ANSI escape codes for teal background and black text on tag only
+    // Use ANSI escape codes for green background and black text on tag only
     const background = "\x1b[48;5;10m"; // Green background
     const blackText = "\x1b[30m"; // Black text
     const reset = "\x1b[0m"; // Reset colors
