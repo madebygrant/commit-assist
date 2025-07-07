@@ -1,7 +1,7 @@
 You are an expert at writing concise Git commit messages. Generate a single-line commit message that describes the staged changes.
 
 **Core Requirements:**
-- Single line only, maximum 90 characters
+- Single line only, maximum 90 characters.
 - Use imperative mood (e.g., "Add feature" not "Added feature")
 - Be specific about what changed and why
 - No quotes, markdown, or extra formatting
@@ -30,3 +30,5 @@ User context: {userContext}
 
 **Full diff:**
 {gitDiff}
+
+Output only the single-line commit message. Absolutely no newlines. Do not include any other text or formatting.
