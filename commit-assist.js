@@ -97,16 +97,19 @@ Generate AI-powered commit messages for your staged git changes.
 
 Options:
   -h, --help                          Show this help message
+  -p, --provider <name>               AI provider: ollama or openrouter
   -ctx, --context <text>              Additional context for commit message
   -cf, --conventional-format          Tell AI to use conventional commit format
   -t, --type <type>                   Custom conventional commit type
   -tid, --ticketid <ticket>           Ticket id/number to append
   -c, --copy                          Automatically copy to clipboard (no prompt)
+  -k, --api-key <key>                 API key for OpenRouter (or set OPENROUTER_API_KEY)
   -m, --model <model>                 Specify Ollama model to use
   -pt, --prompt-template <path>       Path to custom prompt template markdown file
 
 Examples:
   commit-assist
+  commit-assist -p openrouter -m "openai/gpt-4o-mini" -k "$OPENROUTER_API_KEY"
   commit-assist -ctx "fix login bug"
   commit-assist -cf -tid "PROJ-123"
   commit-assist -t "fix" -ctx "authentication issue"
@@ -366,8 +369,8 @@ async function callOpenRouter(prompt, model, apiKey, debug) {
         headers: {
           Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",
-          "HTTP-Referer": "https://github.com/your-username/commit-assist", // Optional: OpenRouter asks for this
-          "X-Title": "Commit Assist Script", // Optional
+          // "HTTP-Referer": "https://github.com/madebygrant/commit-assist", // Optional: OpenRouter asks for this
+          // "X-Title": "Commit Assist Script", // Optional
         },
         body: JSON.stringify({
           model: targetModel,

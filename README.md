@@ -1,10 +1,10 @@
 # Commit Assist
 
-An AI-powered commit message generator that uses Ollama to create meaningful Git commit messages based on your staged changes.
+An AI-powered commit message generator that uses Ollama or OpenRouter to create meaningful Git commit messages based on your staged changes.
 
 ## Features
 
-- 🤖 **AI-powered**: Uses Ollama models to generate intelligent commit messages
+- 🤖 **AI-powered**: Uses Ollama or OpenRouter models to generate intelligent commit messages
 - 📝 **Conventional Commits**: Optional support for conventional commit format
 - 📋 **Clipboard Integration**: Automatically copy generated messages to clipboard
 - 🎯 **Context Aware**: Add custom context to improve message generation
@@ -18,7 +18,8 @@ An AI-powered commit message generator that uses Ollama to create meaningful Git
 ## Prerequisites
 
 - [Node.js](https://nodejs.org/) (v14 or higher)
-- [Ollama](https://ollama.ai/) installed and running
+- [Ollama](https://ollama.ai/) installed and running (for local usage)
+- Optional: [OpenRouter](https://openrouter.ai/) API key for hosted models
 - Git repository with staged changes
 - macOS, Windows or Linux
 
@@ -88,11 +89,13 @@ commit-assist [options]
 ### Options
 
 - `-h, --help`                          Show help message
+- `-p, --provider <name>`               AI provider: `ollama` or `openrouter`
 - `-ctx, --context <text>`              Additional context for commit message
 - `-cf, --conventional-format`          Tell AI to use conventional commit format
 - `-t, --type <type>`                   Custom conventional commit type
 - `-tid, --ticketid <ticket>`           Ticket id/number to append
 - `-c, --copy`                          Automatically copy to clipboard (no prompt)
+- `-k, --api-key <key>`                 API key for OpenRouter (or set `OPENROUTER_API_KEY`)
 - `-m, --model <model>`                 Specify Ollama model to use
 - `-pt, --prompt-template <path>`       Path to custom prompt template markdown file (overrides prompt.md)
 
@@ -157,6 +160,12 @@ commit-assist
 commit-assist -cf -ctx "authentication issue"
 ```
 
+**Use OpenRouter with an API key:**
+
+```bash
+commit-assist -p openrouter -m "openai/gpt-4o-mini" -k "$OPENROUTER_API_KEY"
+```
+
 **Auto-copy with ticket ID:**
 
 ```bash
@@ -194,7 +203,7 @@ commit-assist -m "llama3.2:latest" -cf -t "feat" -tid "PROJ-456" -ctx "add user 
 The script determines which model to use in this order:
 
 1. `--model` or `-m` flag
-2. Default: `llama3.2:latest`
+2. Default: `llama3.2:latest` (Ollama) or provider defaults for OpenRouter
 
 ## Common Issues
 
@@ -208,6 +217,10 @@ The script determines which model to use in this order:
 - Ensure Ollama is running: `ollama serve`
 - Verify the model exists: `ollama list`
 - Try a different model with `-m` flag
+**OpenRouter errors**
+
+- Ensure `-k` or `OPENROUTER_API_KEY` is set
+- Confirm the model name is valid for OpenRouter (e.g., `openai/gpt-4o-mini`)
 
 **"Clipboard copy failed"**
 
